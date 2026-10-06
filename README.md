@@ -8,7 +8,7 @@ Espelha o mock do [FolderPin](https://folderpin.firawynix.com.br) — mesmo palc
 
 ## O que é
 
-Arquivo único, `index.html`, sem dependência além das fontes do Google. Nada de build, nada de framework.
+Arquivo único, `public/index.html`, sem dependência além das fontes do Google. Ao lado dele, no `public/`, ficam o rodapé de projeto (`project-footer.css` e `.js`, o mesmo dos outros sites) e o instalador online assinado (`downloads/FirawSelector-Instalador-Online.exe`). Nada de build, nada de framework.
 
 - **palco 1280×760** com o desktop simulado, escalado por JS para caber em qualquer largura
 - no celular a caixa em volta recebe o tamanho **já escalado**: sem ela o palco continuaria ocupando 1280×760 no layout e sobraria uma tarja preta gigante em volta. O botão **Ampliar** dobra a escala e a área rola de lado
@@ -23,7 +23,7 @@ Duas paletas convivem de propósito:
 
 ## Como editar
 
-Abra o `index.html` no navegador. Os passos vivem no array `steps` do script:
+Abra o `public/index.html` no navegador. Os passos vivem no array `steps` do script:
 
 ```js
 {
@@ -40,25 +40,17 @@ O que cada passo mostra no desktop fica na função `render()`, comparando o ín
 
 **Armadilha já paga:** esconder uma página do Studio com `el.hidden` não basta — a classe `.st-page` tem `display:grid`, que ganha da regra `[hidden]{display:none}` do navegador. Sem a linha `.st-page[hidden]{display:none}` as duas páginas empilham e a de baixo aparece por cima. Se criar página nova, ela precisa da mesma regra.
 
-## Publicar
+## Publicar (pela esteira)
 
-nginx com bind mount: atualizar é só copiar o arquivo — sem rebuild, sem restart.
+O site vai **dentro** da imagem `ghcr.io/firawynix/firawselector-mock`, construída e assinada pela esteira
+(`.github/workflows/esteira.yml`). Mudou o site: PR, merge, e no srv1 `firaw-deploy aplicar firawselector-mock
+sha-<commit>`. O `public/` da pasta do servidor deixou de ser usado; nada de `scp` para lá.
 
-```bash
-scp index.html srv1:/tmp/index.html
-ssh srv1 'sudo install -o root -g root -m 644 /tmp/index.html /home/ksdev/firawselector-mock/public/index.html'
-```
+O job `pagina` da esteira sobe a imagem só leitura, como em produção, e confere que cada arquivo (inclusive o
+instalador) sai igual ao do `public/` e que o container fica saudável.
 
-Primeira subida:
-
-```bash
-ssh srv1 'mkdir -p /home/ksdev/firawselector-mock/public'
-scp -r deploy/* srv1:/home/ksdev/firawselector-mock/
-scp index.html srv1:/home/ksdev/firawselector-mock/public/
-ssh srv1 'cd /home/ksdev/firawselector-mock && docker compose up -d'
-```
-
-**Antes de subir, confira se a porta está livre** (`ss -ltnp | grep 26003`) — o padrão é `26003` e o `.env`/`PORTA_SITE` troca.
+Instalador novo: troque o `public/downloads/FirawSelector-Instalador-Online.exe` no mesmo PR, assinado com o
+certificado da Firawynix (o link do Center e do rodapé aponta para este endereço fixo).
 
 O domínio entra pelo **Cloudflare Tunnel**, não pelo apache: acrescente em `/etc/cloudflared/config.yml`
 
