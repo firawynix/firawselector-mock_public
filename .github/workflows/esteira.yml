@@ -1,0 +1,67 @@
+# Esteira (firawynix-workspace docs/guias/ESTEIRA.md): Gate 1 em todo PR e push; no push da main, a imagem
+# ghcr.io/firawynix/firawselector-mock:sha-<commit>, assinada. Deploy: firaw-deploy no servidor.
+name: esteira
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gate1:
+    uses: firawynix/firawynix-workspace/.github/workflows/gate1.yml@main
+    with:
+      linguagem: estatico
+
+  # A imagem serve o site como em produção (raiz só leitura): cada arquivo sai igual ao do public/, o instalador
+  # sai byte a byte, a imagem só tem o public/ e o container fica saudável.
+  pagina:
+    needs: gate1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Imagem de pé, só leitura como em produção
+        run: |
+          docker build -q -t firawselector-mock-teste .
+          docker run -d --name fs --read-only --tmpfs /var/cache/nginx --tmpfs /var/run \
+            -p 127.0.0.1:8080:80 firawselector-mock-teste
+          for _ in $(seq 1 20); do curl -fs -o /dev/null http://127.0.0.1:8080/ && break; sleep 1; done
+      - name: Cada arquivo sai igual ao do public/
+        run: |
+          falhas=0
+          conferir() {  # caminho arquivo-do-public
+            c=$(curl -s -o /tmp/resposta -w '%{http_code}' "http://127.0.0.1:8080$1")
+            if [ "$c" = 200 ] && cmp -s /tmp/resposta "public/$2"; then echo "ok     $1 = public/$2"
+            else echo "::error::$1 respondeu $c ou não é o public/$2"; falhas=1; fi
+          }
+          conferir / index.html
+          conferir /index.html index.html
+          conferir /project-footer.css project-footer.css
+          conferir /project-footer.js project-footer.js
+          conferir /downloads/FirawSelector-Instalador-Online.exe downloads/FirawSelector-Instalador-Online.exe
+          na_imagem=$(docker exec fs sh -c 'cd /usr/share/nginx/html && find . -type f | sort')
+          no_public=$(cd public && find . -type f | sort)
+          if [ "$na_imagem" = "$no_public" ]; then echo "ok     a imagem tem só os arquivos do public/"
+          else echo "::error::a imagem não tem exatamente os arquivos do public/"; diff <(echo "$no_public") <(echo "$na_imagem"); falhas=1; fi
+          exit $falhas
+      - name: Saúde (HEALTHCHECK do Dockerfile)
+        run: |
+          for _ in $(seq 1 25); do
+            s=$(docker inspect -f '{{.State.Health.Status}}' fs)
+            [ "$s" = healthy ] && { echo "ok     healthy"; exit 0; }
+            sleep 2
+          done
+          echo "::error::o container não ficou healthy (está $s)"; docker logs fs | tail -20; exit 1
+
+  build:
+    needs: gate1
+    uses: firawynix/firawynix-workspace/.github/workflows/build.yml@main
+    with:
+      contexto: "."
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: write
