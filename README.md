@@ -8,7 +8,7 @@ Espelha o mock do [FolderPin](https://folderpin.firawynix.com.br) — mesmo palc
 
 ## O que é
 
-Arquivo único, `index.html`, sem dependência além das fontes do Google. Nada de build, nada de framework.
+Arquivo único, `public/index.html`, sem dependência além das fontes do Google. Ao lado dele, no `public/`, ficam o rodapé de projeto (`project-footer.css` e `.js`, o mesmo dos outros sites) e o instalador online assinado (`downloads/FirawSelector-Instalador-Online.exe`). Nada de build, nada de framework.
 
 - **palco 1280×760** com o desktop simulado, escalado por JS para caber em qualquer largura
 - no celular a caixa em volta recebe o tamanho **já escalado**: sem ela o palco continuaria ocupando 1280×760 no layout e sobraria uma tarja preta gigante em volta. O botão **Ampliar** dobra a escala e a área rola de lado
@@ -23,7 +23,7 @@ Duas paletas convivem de propósito:
 
 ## Como editar
 
-Abra o `index.html` no navegador. Os passos vivem no array `steps` do script:
+Abra o `public/index.html` no navegador. Os passos vivem no array `steps` do script:
 
 ```js
 {
